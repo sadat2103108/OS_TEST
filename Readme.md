@@ -1,140 +1,212 @@
-# 🍚 kacchiOS
+# kacchiOS Project Explanation
 
-A minimal, educational baremetal operating system designed for teaching OS fundamentals.
+## 1. Introduction
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![Platform](https://img.shields.io/badge/platform-x86-lightgrey.svg)]()
+Hello! This document explains **kacchiOS**, a minimal educational operating system designed to teach OS fundamentals. It covers the project structure, boot process, kernel logic, subsystem details, outputs, and verification methods. This guide is suitable for preparing a video or presentation.
 
-## 📖 Overview
+---
 
-kacchiOS is a simple, bare-metal operating system built from scratch for educational purposes. It provides a clean foundation for students to learn operating system concepts by implementing core components themselves.
+## 2. Project Structure Overview
 
-### Current Features
+- **boot.S**: Bootloader and entry point.
+- **kernel.c**: Main kernel logic and test harness.
+- **serial.c/h**: Serial port driver for I/O.
+- **string.c/h**: Basic string utilities.
+- **types.h**: Type definitions.
+- **io.h**: Low-level I/O port operations.
+- **link.ld**: Linker script.
+- **src/**: Core OS modules:
+    - **memory.c/h**: Memory manager.
+    - **process.c/h**: Process manager.
+    - **scheduler.c/h**: Scheduler.
+    - **context_switch.S/h**: Context switching (assembly + interface).
 
-- ✅ **Multiboot-compliant bootloader** - Boots via GRUB/QEMU
-- ✅ **Serial I/O driver** (COM1) - Communication via serial port
-- ✅ **Null process** - Single process that reads and echoes input
-- ✅ **Basic string utilities** - Essential string operations
-- ✅ **Clean, documented code** - Easy to understand and extend
+---
 
-### Future Extensions (Student Assignments)
+## 3. Boot Process (`boot.S`)
 
-Students will extend kacchiOS by implementing:
-- 📝 **Memory Manager**
-- 📝 **Process Manager**
-- 📝 **Scheduler**
+- System starts at `boot.S`, which sets up the stack and clears the BSS section.
+- Calls the `kmain` function in `kernel.c`, the C entry point for the kernel.
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
+## 4. Kernel Initialization (`kernel.c`)
 
-```bash
-# On Ubuntu/Debian
-sudo apt-get install build-essential qemu-system-x86 gcc-multilib
+- Initializes the serial port for output.
+- Prints a boot message:
+  ```
+  [BOOT] Initializing kacchiOS...
+  ```
+- Initializes memory manager, process manager, and scheduler:
+    - `memory_init()`
+    - `process_init()`
+    - `scheduler_init()`
 
-# On Arch Linux
-sudo pacman -S base-devel qemu gcc-multilib
+---
 
-# On macOS
-brew install qemu i686-elf-gcc
-```
+## 5. Testing and Self-Verification
 
-### Build and Run
+The kernel runs tests to verify each subsystem:
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/kacchiOS.git
-cd kacchiOS
+### a. Memory Manager Test
 
-# Build the OS
-make clean
-make
+- `test_memory_manager()`:
+    - Allocates heap and stack memory.
+    - Frees some allocations.
+    - Prints memory statistics.
+- Output example:
+  ```
+  [TEST] Heap allocation...
+  [OK] Multiple heap allocations
+  [TEST] Stack allocation...
+  [OK] Stack allocations
+  [TEST] Memory deallocation...
+  [OK] Deallocations completed
+  ========== MEMORY STATISTICS ==========
+  Total allocated: ...
+  Total freed: ...
+  ...
+  ```
 
-# Run in QEMU
-make run
-```
+### b. Process Manager Test
 
-You should see:
-```
-========================================
-    kacchiOS - Minimal Baremetal OS
-========================================
-Hello from kacchiOS!
-Running null process...
+- `test_process_manager()`:
+    - Creates a test process.
+    - Changes its state (BLOCKED, READY).
+    - Uses process utilities to fetch process info.
+    - Lists all processes.
+- Output example:
+  ```
+  [TEST] Create test process...
+  [OK] Process creation
+  [TEST] State transitions...
+  [OK] State change to BLOCKED
+  [OK] State change to READY
+  [OK] process_get() works
+  [OK] Active processes: ...
+  ========== PROCESS TABLE ==========
+  PID ...: state=READY, priority=...
+  ...
+  ```
 
-kacchiOS> 
-```
+### c. Scheduler Test
 
-Type something and press Enter - it will echo back!
+- `test_scheduler()`:
+    - Initializes the scheduler.
+    - Sets the time quantum.
+    - Selects the next process to run.
+    - Applies the aging algorithm.
+    - Prints scheduler statistics.
+- Output example:
+  ```
+  [TEST] Initialize scheduler...
+  [OK] Scheduler initialized
+  [TEST] Set time quantum to 20ms...
+  [OK] Quantum set correctly
+  [TEST] Select next process...
+  [OK] Selected process PID ...
+  [TEST] Scheduler statistics...
+  [OK] Scheduler test completed
+  [TEST] Apply aging algorithm...
+  ========== SCHEDULER STATISTICS ==========
+  System ticks: ...
+  Context switches: ...
+  ...
+  ```
 
-## 📁 Project Structure
+### d. IPC Test
 
-```
-kacchiOS/
-├── boot.S          # Bootloader entry point (Assembly)
-├── kernel.c        # Main kernel (null process)
-├── serial.c        # Serial port driver (COM1)
-├── serial.h        # Serial driver interface
-├── string.c        # String utility functions
-├── string.h        # String utility interface
-├── types.h         # Basic type definitions
-├── io.h            # I/O port operations
-├── link.ld         # Linker script
-├── Makefile        # Build system
-└── README.md       # This file
-```
+- `test_ipc()`:
+    - Creates sender and receiver processes.
+    - Simulates sending and receiving messages.
+    - Verifies IPC functionality.
+- Output example:
+  ```
+  [TEST] Create IPC processes...
+  [OK] IPC processes created
+  [TEST] IPC simulation...
+  [OK] Message sent
+  [OK] Message received
+  ```
 
-## 🛠️ Build System
+---
 
-### Makefile Targets
+## 6. Main Kernel Loop
 
-| Command | Description |
-|---------|-------------|
-| `make` or `make all` | Build kernel.elf |
-| `make run` | Run in QEMU (serial output only) |
-| `make run-vga` | Run in QEMU (with VGA window) |
-| `make debug` | Run in debug mode (GDB ready) |
-| `make clean` | Remove build artifacts |
+- After tests, the kernel prints a welcome banner and enters a command loop.
+- User can type commands via the serial terminal:
+    - `help` — lists available commands.
+    - `memstat` — prints memory stats.
+    - `proclist` — lists all processes.
+    - `schedstat` — prints scheduler stats.
+    - `test` — reruns all tests.
+    - `exit` — halts the system.
+- Example prompt:
+  ```
+  kacchiOS> 
+  ```
 
-## 📚 Learning Resources
+---
 
-### Recommended Reading
+## 7. Subsystems in Detail (`src/`)
 
-- [XINU OS](https://xinu.cs.purdue.edu/) - Educational OS similar to kacchiOS
-- [OSDev Wiki](https://wiki.osdev.org/) - Comprehensive OS development guide
-- [The Little OS Book](https://littleosbook.github.io/) - Practical OS development
-- [Operating Systems: Three Easy Pieces](https://pages.cs.wisc.edu/~remzi/OSTEP/) - OS concepts textbook
+### a. Memory Manager (`src/memory.c/h`)
 
-### Related Topics
+- Manages a fixed-size heap and stack area.
+- Provides `kmalloc`, `kfree` for heap, and `alloc_stack`, `free_stack` for stacks.
+- Tracks allocations and prints statistics for debugging.
 
-- x86 Assembly Language
-- Memory Management
-- Process Scheduling
-- System Calls
-- Interrupt Handling
+### b. Process Manager (`src/process.c/h`)
 
-## 🤝 Contributing
+- Manages process control blocks (PCBs) in a table.
+- Supports process creation, termination, state changes, and IPC.
+- Each process has its own stack, priority, and message queue.
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+### c. Scheduler (`src/scheduler.c/h`)
 
-### Guidelines
+- Implements a simple priority-based scheduler with aging.
+- Selects the next READY process with the highest priority (lowest number).
+- Handles context switching using assembly routines in `src/context_switch.S`.
+- Tracks and prints statistics like context switches and system ticks.
 
-1. Keep code simple and educational
-2. Add comments explaining complex concepts
-3. Follow existing code style
-4. Test changes in QEMU before submitting
+### d. Context Switching (`src/context_switch.S/h`)
 
-## 📄 License
+- Provides low-level routines to save and restore CPU state.
+- Enables switching between process stacks during scheduling.
 
-This project is licensed under the MIT License.
+---
 
-## 👨‍🏫 About
+## 8. Outputs and Verification
 
-kacchiOS was created as an educational tool for teaching operating system concepts. It provides a minimal, working foundation that students can extend to learn core OS principles through hands-on implementation.
+- All outputs are sent to the serial port (COM1), visible in QEMU’s terminal.
+- Each subsystem prints detailed logs during initialization, operation, and testing.
+- The kernel’s built-in tests and command interface allow you to verify that:
+    - Memory allocation/deallocation works.
+    - Processes can be created, managed, and listed.
+    - The scheduler selects and switches processes correctly.
+    - IPC between processes is functional.
 
-## 🙏 Acknowledgments
+---
 
-- Inspired by XINU OS
-- Built with guidance from OSDev community
-- Thanks to all students who have contributed
+## 9. Conclusion
+
+- kacchiOS is a modular, testable educational OS.
+- Each subsystem is self-verifying via kernel tests and runtime commands.
+- The project is easy to extend for further OS concepts, such as filesystems or device drivers.
+
+---
+
+## 10. Demo Flow (for Video)
+
+1. **Boot the OS in QEMU**:  
+   Show the boot messages and welcome banner.
+2. **Demonstrate Commands**:  
+   Type `help`, `memstat`, `proclist`, `schedstat`, and `test` to show live outputs.
+3. **Explain Each Output**:  
+   As each command/test runs, explain what it verifies and how it proves the subsystem is working.
+4. **Show Source Code Highlights**:  
+   Briefly show the relevant code in `src/` as you explain each subsystem.
+
+---
+
+**Thank you for reading! This concludes the kacchiOS project walkthrough.**
